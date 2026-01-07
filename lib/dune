@@ -1,0 +1,6 @@
+(library
+ (preprocess
+  (pps ppx_deriving.show ppx_deriving.ord ppx_deriving.eq))
+ (name ECStory01)
+ (modules util quest01)
+ (libraries base stdio))

@@ -1,0 +1,4 @@
+(executable
+ (public_name ECStory01)
+ (name main)
+ (libraries ECStory01 base stdio))
