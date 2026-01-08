@@ -8,6 +8,7 @@ let () =
   let solution =
     match quest with
     | 1 -> ECStory01.Quest01.solve part
+    | 2 -> ECStory01.Quest02.solve part
     | _ -> failwith "Quest not implemented"
   in
   print_endline solution
