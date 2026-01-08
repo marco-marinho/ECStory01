@@ -1,4 +1,5 @@
 open! Base
+open! Stdio
 
 let zero_pad width str =
   if String.length str >= width
@@ -7,9 +8,8 @@ let zero_pad width str =
 ;;
 
 let read_input_lines quest part =
-  In_channel.with_open_text
+  In_channel.read_lines
     ("data/quest" ^ zero_pad 2 (Int.to_string quest) ^ "_" ^ Int.to_string part ^ ".txt")
-    In_channel.input_lines
 ;;
 
 let num_digits n =
@@ -27,3 +27,5 @@ let print_array ~f:converter arr =
   let ostring = Array.fold ~init:"[" ~f:(fun acc x -> acc ^ converter x ^ ",") arr in
   Stdio.print_endline (ostring ^ "]")
 ;;
+
+let wrap_index idx len = ((idx % len) + len) % len

@@ -1,5 +1,6 @@
 open! Base
 open! Stdio
+open Angstrom
 
 type triplet =
   { a : int
@@ -12,38 +13,45 @@ type triplet =
   }
 [@@deriving show]
 
+type eni_result =
+  { elements : int array
+  ; cycle_start_index : int
+  }
+[@@deriving show]
+
+let kv label =
+  string label
+  *> char '='
+  *> (take_while1 (function
+        | '0' .. '9' | '-' -> true
+        | _ -> false)
+      >>| Int.of_string)
+  <* skip_while (fun c -> Char.equal c ' ')
+;;
+
+let line_parser =
+  let+ a = kv "A"
+  and+ b = kv "B"
+  and+ c = kv "C"
+  and+ x = kv "X"
+  and+ y = kv "Y"
+  and+ z = kv "Z"
+  and+ m = kv "M" in
+  { a; b; c; x; y; z; m }
+;;
+
 let parse_line line =
-  Stdlib.Scanf.sscanf line "A=%d B=%d C=%d X=%d Y=%d Z=%d M=%d" (fun a b c x y z m ->
-    { a; b; c; x; y; z; m })
+  match parse_string ~consume:All line_parser line with
+  | Ok result -> result
+  | Error msg -> failwith msg
 ;;
 
-let eni n exp imod =
-  let rec aux ixp prev_score acc =
-    match ixp with
-    | 0 -> acc |> Util.digits_to_int
-    | x ->
-      let new_score = prev_score * n % imod in
-      aux (x - 1) new_score (new_score :: acc)
-  in
-  aux exp 1 []
-;;
-
-let calc_enis triplet =
-  let enia = eni triplet.a triplet.x triplet.m in
-  let enib = eni triplet.b triplet.y triplet.m in
-  let enic = eni triplet.c triplet.z triplet.m in
-  enia + enib + enic
-;;
-
-let eni_cycle n exp imod =
+let eni n imod =
   let seen = Hashtbl.create (module Int) in
   let rec aux i prev_score acc =
     let new_score = prev_score * n % imod in
     match Hashtbl.find seen new_score with
-    | Some idx ->
-      if exp < List.length acc
-      then List.take (List.rev acc) exp |> Array.of_list, -1
-      else acc |> List.rev |> Array.of_list, idx
+    | Some idx -> { elements = Array.of_list_rev acc; cycle_start_index = idx }
     | None ->
       let () = Hashtbl.set seen ~key:new_score ~data:i in
       aux (i + 1) new_score (new_score :: acc)
@@ -51,13 +59,74 @@ let eni_cycle n exp imod =
   aux 0 1 []
 ;;
 
+let full_eni exp { elements; cycle_start_index } =
+  Sequence.range 0 exp
+  |> Sequence.map ~f:(fun i ->
+    if i < Array.length elements
+    then elements.(i)
+    else (
+      let wrapped_idx =
+        Util.wrap_index i (Array.length elements - cycle_start_index) + cycle_start_index
+      in
+      elements.(wrapped_idx)))
+  |> Sequence.to_list
+  |> List.rev
+  |> Util.digits_to_int
+;;
+
+let last_5_eni exp { elements; cycle_start_index } =
+  let last_idx =
+    (exp - cycle_start_index) % (Array.length elements - cycle_start_index)
+  in
+  List.range (last_idx - 5) last_idx
+  |> List.map ~f:(fun i ->
+    let wrapped_idx =
+      Util.wrap_index i (Array.length elements - cycle_start_index) + cycle_start_index
+    in
+    elements.(wrapped_idx))
+  |> List.rev
+  |> Util.digits_to_int
+;;
+
+let eni_sum exp { elements; cycle_start_index } =
+  let pre_cycle =
+    Sequence.range 0 cycle_start_index
+    |> Sequence.fold ~init:0 ~f:(fun acc i -> acc + elements.(i))
+  in
+  let post_cycle =
+    Sequence.range cycle_start_index (Array.length elements)
+    |> Sequence.fold ~init:0 ~f:(fun acc i -> acc + elements.(i))
+  in
+  let post_cycle_times =
+    (exp - cycle_start_index) / (Array.length elements - cycle_start_index)
+  in
+  let to_sum = (exp - cycle_start_index) % (Array.length elements - cycle_start_index) in
+  let left_over =
+    Sequence.range cycle_start_index (cycle_start_index + to_sum)
+    |> Sequence.fold ~init:0 ~f:(fun acc i -> acc + elements.(i))
+  in
+  pre_cycle + (post_cycle * post_cycle_times) + left_over
+;;
+
+let calc_enis triplet =
+  let enia = full_eni triplet.x (eni triplet.a triplet.m) in
+  let enib = full_eni triplet.y (eni triplet.b triplet.m) in
+  let enic = full_eni triplet.z (eni triplet.c triplet.m) in
+  enia + enib + enic
+;;
+
 let calc_enis_last_5 triplet =
-  let enia = eni_cycle triplet.a triplet.x triplet.m in
-  (* let enib = eni_cycle triplet.b triplet.y triplet.m in
-  let enic = eni_cycle triplet.c triplet.z triplet.m in *)
-  let () = Util.print_array ~f:Int.to_string (fst enia) in
-  let () = Stdio.print_endline (Int.to_string (snd enia)) in
-  0
+  let enia = last_5_eni triplet.x (eni triplet.a triplet.m) in
+  let enib = last_5_eni triplet.y (eni triplet.b triplet.m) in
+  let enic = last_5_eni triplet.z (eni triplet.c triplet.m) in
+  enia + enib + enic
+;;
+
+let calc_enis_sum triplet =
+  let enia = eni_sum triplet.x (eni triplet.a triplet.m) in
+  let enib = eni_sum triplet.y (eni triplet.b triplet.m) in
+  let enic = eni_sum triplet.z (eni triplet.c triplet.m) in
+  enia + enib + enic
 ;;
 
 let part1 () =
@@ -76,7 +145,13 @@ let part2 () =
   result |> Int.to_string
 ;;
 
-let part3 () = ""
+let part3 () =
+  let input = Util.read_input_lines 1 3 in
+  let triplets = List.map ~f:parse_line input in
+  let enis = List.map ~f:calc_enis_sum triplets in
+  let result = Util.list_max enis in
+  result |> Int.to_string
+;;
 
 let solve part =
   match part with
