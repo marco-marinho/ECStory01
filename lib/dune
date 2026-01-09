@@ -2,5 +2,5 @@
  (preprocess
   (pps ppx_jane ppx_deriving.show ppx_deriving.ord ppx_deriving.eq))
  (name ECStory01)
- (modules util quest01 quest02)
- (libraries base stdio angstrom))
+ (modules util quest01 quest02 quest03)
+ (libraries base stdio angstrom zarith))

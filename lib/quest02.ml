@@ -128,10 +128,10 @@ let rec replace_node node_replacement tree =
 let rec find_node tree node_id =
   match tree with
   | Empty -> []
-  | Leaf { id; value = _; tag = _; left; right; last_swap = _ } ->
-    if id = node_id
-    then [ tree ] @ find_node left node_id @ find_node right node_id
-    else find_node left node_id @ find_node right node_id
+  | Leaf current ->
+    if current.id = node_id
+    then [ tree ] @ find_node current.left node_id @ find_node current.right node_id
+    else find_node current.left node_id @ find_node current.right node_id
 ;;
 
 let parse_line line =
