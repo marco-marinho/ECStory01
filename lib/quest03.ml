@@ -36,8 +36,7 @@ let calculate_final_pos initial_pos steps =
 
 let calculate_score pos = pos.x + (100 * pos.y)
 
-let rec crt ilist =
-  match ilist with
+let rec crt = function
   | [] -> 0
   | [ a ] -> a.y - 1
   | a :: b :: tl ->

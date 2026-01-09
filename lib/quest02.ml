@@ -74,8 +74,7 @@ let swap_parser =
   a
 ;;
 
-let extract_node_info command =
-  match command with
+let extract_node_info = function
   | Add info -> info
   | Swap _ -> failwith "Not an Add command"
 ;;
@@ -107,8 +106,7 @@ let rec replace_node_value tree node_id new_value =
         }
 ;;
 
-let rec replace_node node_replacement tree =
-  match tree with
+let rec replace_node node_replacement = function
   | Empty -> Empty
   | Leaf current ->
     let tid, ttag, tlast_swap, tnode = node_replacement in
@@ -167,14 +165,12 @@ let node_info_to_node { id; left_val; left_tag; right_val; right_tag } =
   left_node, right_node
 ;;
 
-let get_node_tag node =
-  match node with
+let get_node_tag = function
   | Empty -> ""
   | Leaf l -> l.tag
 ;;
 
-let get_node_children node =
-  match node with
+let get_node_children = function
   | Empty -> Empty, Empty
   | Leaf l -> l.left, l.right
 ;;
